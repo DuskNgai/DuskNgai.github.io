@@ -166,10 +166,10 @@ $$
 
 因此我们可以定义：
 $$
-\alpha_i=1-\exp(-\sigma_t(x_i)\delta_i)
+\alpha(x_i)=1-\exp(-\sigma_t(x_i)\delta_i)
 $$
 对应的离散渲染公式就是：
 $$
-L(s)=L(0)\prod_{i=1}^{n}T(0,s)+\sum_{i=1}^nL_e(x_i)T(x_i,s)\alpha_i\\
-T(x_i,s)=\prod_{j=i+1}^{n}\exp(-\sigma_t(x_j)\delta_j)=\prod_{j=i+1}^n(1-\alpha_i)
+L(s)=L(0)\prod_{i=1}^{n}T(0,s)+\sum_{i=1}^nL_e(x_i)T(x_i,s)\alpha(x_i)\\
+T(x_i,s)=\prod_{j=i+1}^{n}\exp(-\sigma_t(x_j)\delta_j)=\prod_{j=i+1}^n(1-\alpha(x_j))
 $$

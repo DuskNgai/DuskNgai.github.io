@@ -54,6 +54,21 @@
 
 ## Differentiable Rendering
 
+什么是可微渲染？首先要知道什么是渲染。这张图片展示了渲染过程：把场景的建模信息编码为 $\mathbf{x}$，输入到渲染过程 $f$，随后输出了图像 $\mathbf{y}$。假如说这个渲染过程 $f$ 是可逆的，也就是通过一张图像 $\mathbf{y}$，那么我们就可以得到场景的建模 $\mathbf{x}$。我们把从模型到图像的过程叫做前向渲染（forward rendering），把图像到模型的过程叫做逆渲染（inverse rendering）。但是通常来说，$f$ 是高度复杂的非线性函数，获得其逆映射一般来说不太可能。
+
+因此，出现了可微渲染。可微渲染并不是尝试去获得渲染过程逆映射 $f^{-1}$，而是通过迭代的方式，连续的去优化输入模型。具体来说，可微渲染的步骤是
+
+1. 假设我们已经有了一个初始场景模型 $\mathbf{x}$，经过渲染过程 $f$ 得到一张图像 $\mathbf{y}$，即前向渲染一次。
+2. 把图像 $\mathbf{y}$ 经过一个质量评估函数 $g$，我们就能得到这张图像的不相似度 $z$。
+3. 根据不相似度 $z$ 我们可以用梯度下降的方法利用 $\partial{z}/\partial\mathbf{x}$ 连续优化场景模型 $\mathbf{x}$。
+4. 不断迭代直到不相似度 $z$ 收敛。
+
+这里，根据链式法则，我们有：
+$$
+\frac{\partial{z}}{\partial\mathbf{x}}=\frac{\partial{z}}{\partial\mathbf{y}}\frac{\partial\mathbf{y}}{\partial\mathbf{x}}=g'(\mathbf{y})f'(\mathbf{x})
+$$
+只要 $f$ 是可微的，那么整个过程就可以持续迭代连续优化。此外，可微渲染的另一个好处是，它与端到端训练的概率推理和机器学习流水线是兼容的。因此利用 2D 的图片，来进行监督学习 3D 的场景参数。
+
 ### Volume Rendering
 
 上周我们已经介绍过 Volume Rendering 了，这里我们把连续和离散的公式再摆出来：
@@ -68,13 +83,15 @@ $$
 \hat C(\mathbf r)=\sum_{i=1}^NT_i(1-\exp(-\sigma_i\delta_i))\mathbf c_i=\sum_{i=1}^NT_i\alpha_i\mathbf c_i\\
 T_i=\prod_{i=1}^N\exp(-\sigma_i\delta_i)=\prod_{i=1}^N(1-\alpha_i)
 $$
-什么是可微渲染？渲染旨在解决图像合成的前向过程。为了朝着反向发展，需要一种近似可微渲染器 ，它能明确地模拟模型参数变化与图像观察之间的关系。在 NeRF 中，颜色和密度作为输入，生成图像中的像素，这些像素保留里面导数，以便它可以准确确定哪些输入对最终像素颜色有贡献。通过这种方式，它可以将图像“反渲染”回颜色和密度。
-
-可微分渲染的优势在于使得能够训练深度神经网络，利用 2D 的图片，来进行监督学习 3D 的场景参数。显然，volume rendering 是满足这个要求的。
+值得注意的是：
+$$
+\int_0^{\infty}T(t)\sigma(\mathbf{r}(t))=1
+$$
+可以看成概率密度函数。而且趋近于 dirac-delta，需要注意的是 $\delta(t-1)$ 只是示意图。
 
 ## Positional Encoding
 
-其实有了前面的操作，我们已经能够开始训练一个模型了。但是很遗憾，不 work。NeRF 团队敏锐地把 Positional Encoding 加到了网络的输入和第一层网络之间。Positional encoding 最早出自 Transformer，应用在 NLP 领域，但是和我们没什么大的关系。Positional encoding 做的是把低维的输入向量映射到高维的编码空间。有一篇论文 Fourier Features Mapping 从理论上研究了 positional encoding 为什么可以作用的原因。简单来说，MLP 倾向于学习低频的信息，或者说非常缓慢地收敛到目标函数的高频分量，以至于 MLP 实际上无法学习这些分量。之前的机器学习任务都是从高维映射到低维的任务，而 NeRF 是低维向高维映射的任务。引入 Fourier Features Mapping 可以加速高频分量的收敛速度。
+其实有了前面的操作，我们已经能够开始训练一个模型了。但是很遗憾，不 work。NeRF 团队敏锐地把 Positional Encoding 加到了网络的输入和第一层网络之间。Positional encoding 最早出自 Transformer，应用在 NLP 领域，但是和我们没什么大的关系。Positional encoding 做的是把低维的输入向量映射到高维的编码空间。有一篇论文 Fourier Features Mapping 从理论上研究了 positional encoding 为什么可以作用的原因。简单来说，MLP 倾向于学习低频的信息，或者说非常缓慢地收敛到目标函数的高频分量，以至于 MLP 实际上无法学习这些分量。之前的机器学习任务都是从高维映射到低维的任务，而 NeRF 是低维向高维映射的任务。引入 Fourier Features Mapping 可以加速高频分量的收敛速度。其实从 Mip-NeRF 的论文配图中我们就可以很明显的看出，positional encoding 将原本很相近的位置输入在高维空间里面有效的打散了。从回归任务的角度来说，神经网络非常适合将区别鲜明的高维特征分离开。
 
 介绍 Hash encoding。
 
